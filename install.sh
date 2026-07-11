@@ -121,7 +121,7 @@ for target in "${resolved_targets[@]}"; do
     tmp="$target/.${name}.tmp.$$"
 
     rm -rf "${tmp:?}"
-    cp -R "$skill" "$tmp"
+    cp -RL "$skill" "$tmp"
     rm -rf -- "${target:?}/$name"
     mv "$tmp" "$target/$name"
     echo "Installed $name -> $target/$name"
