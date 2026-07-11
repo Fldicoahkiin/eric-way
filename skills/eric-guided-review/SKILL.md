@@ -90,7 +90,7 @@ Approve / Request changes / Comment only: reason.
 - One PR gets exactly one HTML page containing its full Guided Review.
 - For multiple PRs, also generate an index page that lists every PR and links to each PR's HTML page; do not merge several PRs into one page.
 - Every claim about the change must reference the code it describes: quote the relevant code block (real lines from the diff, with file path and line numbers) next to the claim so the reader can verify the review against the actual code. A statement with no code reference is not verifiable — either add the code block or drop the statement.
-- After generating the HTML, serve it: when `npx` is available, run `npx -y serve` on the output directory in the background and tell the user the URL. Fall back to sharing the file paths when `npx` is unavailable.
+- After generating the HTML, publish it. First check whether the current environment can upload/host HTML pages (for example an artifact or page-publishing tool); if it can, upload the pages there and share the resulting URLs. If not, serve them locally instead: run `npx -y serve` on the output directory in the background and tell the user the URL. When neither is possible, fall back to sharing the file paths.
 
 ## Accuracy Rules
 
