@@ -1,6 +1,6 @@
 ---
 name: eric-e2e-testing
-description: Apply Eric's browser end-to-end testing standards. Use when a task needs a real browser, UI smoke test, screenshot capture, browser bug reproduction, Dockerized browser test run, or agent-browser based verification.
+description: Apply Eric's browser end-to-end testing standards. Use when a task needs a real browser, UI smoke test, screenshot capture, browser bug reproduction, Dockerized browser test run, agent-browser based verification, or desktop WebView (Tauri/Electron) E2E where the app itself cannot be driven.
 ---
 
 # Eric E2E Testing
@@ -61,6 +61,37 @@ docker run --rm \
   sh -lc 'agent-browser open http://host.docker.internal:3000 && agent-browser close'
 ```
 
+## Desktop WebView Apps
+
+Use this flow when the app's WebView has no automation protocol: macOS WKWebView exposes no CDP and `tauri-driver` does not support macOS. (Electron can usually be driven directly through Playwright's Electron support — prefer that when it applies.)
+
+Drive the renderer as a plain web page and fake only the shell:
+
+1. Serve the renderer from its dev server and open it in Chromium with `agent-browser`.
+2. Register an init script before first navigation that fakes only the shell IPC channel — for Tauri, `window.__TAURI_INTERNALS__.invoke`. Enumerate the commands the renderer actually calls (grep for `invoke(` and plugin imports), return real values where it matters, in-memory or no-op defaults for the rest.
+3. Keep the business path real: point the mocked bootstrap at a real backend binary and let HTTP, persistence, and the filesystem run for real.
+4. Isolate user data: launch the backend with a sandboxed `HOME`/app-data directory so the test can never touch real config files.
+5. Keep the page same-origin with the backend via a dev-server proxy instead of loosening the backend's CORS or origin guards for the test.
+6. Assert at the boundaries after each UI action: check the API response and the on-disk content, not only what the UI shows.
+
+Verified shape for the init script:
+
+```js
+// Fake only the shell IPC channel; every HTTP call stays real.
+window.__TAURI_INTERNALS__ = {
+  invoke: async (cmd, args) => {
+    if (cmd === "start_server") return { port: API_PORT, token: API_TOKEN };
+    if (cmd.startsWith("plugin:store|")) return storeMock(cmd, args); // in-memory Map
+    if (cmd === "plugin:event|listen") return nextId++;
+    return null; // no-op default: log, menu, updater, clipboard, …
+  },
+  transformCallback: (cb) => registerCallback(cb),
+  metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main" } },
+};
+```
+
+This covers renderer ↔ backend ↔ storage. It does not cover the shell itself — native windows, menus, tray, and the real IPC command implementations still need a platform driver (Windows/Linux `tauri-driver`, Playwright for Electron) or a manual smoke pass.
+
 ## Standards
 
 - Prefer the smallest browser check that proves the risk.
@@ -68,9 +99,13 @@ docker run --rm \
 - Verify screenshots exist when screenshot capture is the proof.
 - Document browser and `agent-browser` versions when the result depends on the runtime.
 - Do not use Playwright by default when `agent-browser` is available for this work.
+- Fake only the shell IPC layer in desktop WebView E2E; keep HTTP, persistence, and the filesystem real.
+- Sandbox `HOME`/app-data for any E2E that can write user config.
 
 ## Boundaries
 
 - Do not use E2E for risks a narrower check can prove.
 - Do not add hosted browser provider assumptions unless the task explicitly needs that provider.
 - Do not leave browser processes running after the check.
+- Do not report WebView E2E as covering the native shell; windows, menus, tray, and real IPC implementations need a platform driver or a manual pass.
+- Do not weaken backend CORS or origin guards to make a test pass; keep the test page same-origin instead.

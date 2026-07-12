@@ -14,6 +14,7 @@ Use this skill for desktop app implementation or desktop review.
 3. For JavaScript, TypeScript, Node, package-manager, install, or script-runner work, also use `$eric-javascript`.
 4. Keep native/runtime work off the UI thread and keep renderer data access behind the existing API/query layer.
 5. Validate the path that matters: dev mode, packaged mode, generated contracts, typecheck, or packaging metadata depending on the change.
+6. For browser-driven E2E of the renderer, use `$eric-e2e-testing` — on WebViews without an automation protocol (macOS WKWebView), drive the dev-server page in Chromium with the shell IPC mocked and the backend real.
 
 ## Standards
 
